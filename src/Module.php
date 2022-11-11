@@ -32,7 +32,15 @@ class Module implements
      * @var string
      */
     protected $credentialId;
+
+    /**
+     * @var string
+     */
     protected $processId;
+
+    /**
+     * @var string
+     */
     protected $clientName;
 
     /**
@@ -40,6 +48,9 @@ class Module implements
      *
      * @param string $accessToken
      * @param Client $client
+     * @param string $credentialId
+     * @param string $processId
+     * @param string $clientName
      */
     public function __construct(
         string $accessToken,
@@ -58,11 +69,11 @@ class Module implements
 
     public function createSignature(SetaPDF_Core_Reader_FilePath $tmpPath)
     {
-        $hashAlgorithm = 'sha256'; // let's fixiate this for this example
+        $hashAlgorithm = 'sha256';
         $padesModule = $this->_getPadesModule();
         $padesModule->setDigest($hashAlgorithm);
 
-        $hashValue = hash($hashAlgorithm, $padesModule->getDataToSign($tmpPath), true);
+        $hashValue = \hash($hashAlgorithm, $padesModule->getDataToSign($tmpPath), true);
 
         $digestInfo = new SetaPDF_Signer_Asn1_Element(
             SetaPDF_Signer_Asn1_Element::SEQUENCE | SetaPDF_Signer_Asn1_Element::IS_CONSTRUCTED, '',
@@ -86,7 +97,7 @@ class Module implements
             ]
         );
 
-        $hash = base64_encode($digestInfo);
+        $hash = \base64_encode($digestInfo);
 
         $sad = $this->client->credentialsAuthorize(
             $this->accessToken,
@@ -106,7 +117,7 @@ class Module implements
         )[0];
 
         // pass the signature value to the CMS structure
-        $padesModule->setSignatureValue(base64_decode($signatureValue));
+        $padesModule->setSignatureValue(\base64_decode($signatureValue));
 
         return (string)$padesModule->getCms();
     }

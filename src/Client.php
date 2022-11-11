@@ -140,7 +140,7 @@ class Client
     /**
      * @param string|null $lang
      * @return array
-     * @throws ClientExceptionInterface
+     * @throws ClientExceptionInterface|Exception
      */
     public function info(?string $lang = null): array
     {
@@ -169,7 +169,7 @@ class Client
 
     public function credentialsInfo(
         string $accessToken,
-        string $credentialID = null,
+        string $credentialID,
         string $processId,
         string $clientName,
         ?string $certificates = null
@@ -206,10 +206,6 @@ class Client
             ]
         ];
 
-        echo "<pre>";
-        var_dump($inputData);
-        echo "</pre>";
-
         return $this->call('/credentials/authorize', $accessToken, $inputData);
     }
 
@@ -224,7 +220,7 @@ class Client
         $inputData = [
             'credentialID' => $credentialID,
             'sad' => $sad,
-            'hashes' => array_values($hashes),
+            'hashes' => \array_values($hashes),
             'signAlgo' => '1.2.840.113549.1.1.11',
             'clientData' => [
                 'processId' => $processId,
