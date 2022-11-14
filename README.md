@@ -82,7 +82,7 @@ If you need to call an endpoint which is not covered by a proxy method, you can 
 This is the main module for the SetaPDF-Signer which implements the
 [`SetaPDF_Signer_Signature_Module_ModuleInterface`](https://manuals.setasign.com/api-reference/setapdf/c/SetaPDF.Signer.Signature.Module.ModuleInterface) interface.
 
-Internally it creates PAdES conforming signatures by using the [SetaPDF_Signer_Signature_Module_PadesProxyTrait](https://manuals.setasign.com/api-reference/setapdf/c/SetaPDF.Signer.Signature.Module.PadesProxyTrait).
+Internally it creates PAdES conforming signatures by using the [`SetaPDF_Signer_Signature_Module_PadesProxyTrait`](https://manuals.setasign.com/api-reference/setapdf/c/SetaPDF.Signer.Signature.Module.PadesProxyTrait).
 
 Its constructor requires the following arguments:
 
