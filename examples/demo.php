@@ -30,7 +30,6 @@ $accessToken = $settings['accessToken'];
 $credentialId = $settings['credentialId'];
 
 $httpClient = new GuzzleHttp\Client();
-$httpClient = new Mjelamanov\GuzzlePsr18\Client($httpClient);
 $requestFactory = new Http\Factory\Guzzle\RequestFactory();
 $streamFactory = new Http\Factory\Guzzle\StreamFactory();
 $client = new Client(
@@ -58,6 +57,8 @@ $certificate = array_shift($certificates);
 $module = new Module($accessToken, $client, $credentialId, $processId, $settings['clientName']);
 $module->setCertificate($certificate);
 $module->setExtraCertificates($certificates);
+// specify a document name that is send to the API
+$module->setDocumentName('my-document-name.pdf');
 
 // create a writer instance
 $writer = new SetaPDF_Core_Writer_File($resultPath);
