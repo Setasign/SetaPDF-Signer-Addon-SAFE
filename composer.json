@@ -15,12 +15,12 @@
         "ext-json": "*",
         "psr/http-client": "^1.0",
         "psr/http-factory": "^1.0",
-        "setasign/setapdf-signer": "^2.40.3",
-        "ramsey/uuid": "^4.6"
+        "setasign/setapdf-signer": "^2.40.3"
     },
     "require-dev": {
         "guzzlehttp/guzzle": "^7.0",
-        "http-interop/http-factory-guzzle": "^1.0"
+        "http-interop/http-factory-guzzle": "^1.0",
+        "ramsey/uuid": "^4.6"
     },
     "autoload": {
         "psr-4": {
