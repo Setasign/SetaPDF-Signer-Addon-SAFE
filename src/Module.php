@@ -2,6 +2,7 @@
 
 namespace setasign\SetaPDF\Signer\Module\SAFE;
 
+use Psr\Http\Client\ClientExceptionInterface;
 use SetaPDF_Core_Reader_FilePath;
 use SetaPDF_Signer_Asn1_Element;
 use SetaPDF_Signer_Asn1_Oid;
@@ -18,40 +19,13 @@ class Module implements
 {
     use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
 
-    /**
-     * @var Client
-     */
-    protected $client;
+    protected Client $client;
+    protected string $accessToken;
+    protected string $credentialId;
+    protected string $processId;
+    protected string $clientName;
+    protected string $documentName = 'document.pdf';
 
-    /**
-     * @var string
-     */
-    protected $accessToken;
-
-    /**
-     * @var string
-     */
-    protected $credentialId;
-
-    /**
-     * @var string
-     */
-    protected $processId;
-
-    /**
-     * @var string
-     */
-    protected $clientName;
-
-    /**
-     * Module constructor.
-     *
-     * @param string $accessToken
-     * @param Client $client
-     * @param string $credentialId
-     * @param string $processId
-     * @param string $clientName
-     */
     public function __construct(
         string $accessToken,
         Client $client,
@@ -67,7 +41,17 @@ class Module implements
         $this->clientName = $clientName;
     }
 
-    public function createSignature(SetaPDF_Core_Reader_FilePath $tmpPath)
+    public function setDocumentName(string $documentName): void
+    {
+        $this->documentName = $documentName;
+    }
+
+    /**
+     * @throws ClientExceptionInterface
+     * @throws \SetaPDF_Signer_Exception
+     * @throws Exception|\JsonException
+     */
+    public function createSignature(SetaPDF_Core_Reader_FilePath $tmpPath): string
     {
         $hashAlgorithm = 'sha256';
         $padesModule = $this->_getPadesModule();
@@ -102,7 +86,7 @@ class Module implements
         $sad = $this->client->credentialsAuthorize(
             $this->accessToken,
             $this->credentialId,
-            ['test.pdf' => $hash],
+            [$this->documentName => $hash],
             $this->processId,
             $this->clientName
         )['sad'];
