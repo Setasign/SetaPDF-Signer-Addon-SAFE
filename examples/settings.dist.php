@@ -6,5 +6,6 @@ return [
     'basicAuthPassword' => 'Test',
     'clientName' => 'clientTest',
     'accessToken' => '<<YOUR ACCESS TOKEN>>',
+    'refreshToken' => '<<YOUR REFRESH TOKEN>>',
     'credentialId' => '<<YOUR CREDENTIAL ID>>',
 ];
