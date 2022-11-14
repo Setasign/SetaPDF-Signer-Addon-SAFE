@@ -14,42 +14,29 @@ class Client
     /**
      * @var ClientInterface PSR-18 HTTP Client implementation.
      */
-    protected $httpClient;
+    protected ClientInterface $httpClient;
 
     /**
      * @var RequestFactoryInterface PSR-17 HTTP Factory implementation.
      */
-    protected $requestFactory;
+    protected RequestFactoryInterface $requestFactory;
 
     /**
      * @var StreamFactoryInterface PSR-17 HTTP Factory implementation.
      */
-    protected $streamFactory;
+    protected StreamFactoryInterface $streamFactory;
 
-    /**
-     * @var string
-     */
-    protected $apiUri;
-
-    /**
-     * @var string
-     */
-    protected $basicAuthUsername;
-
-    /**
-     * @var string
-     */
-    protected $basicAuthPassword;
-
-    /**
-     * @var array|null
-     */
-    protected $info;
+    protected string $apiUri;
+    protected string $basicAuthUsername;
+    protected string $basicAuthPassword;
+    protected ?array $info;
 
     /**
      * Client constructor.
      *
      * @param string $apiUri
+     * @param string $basicAuthUsername
+     * @param string $basicAuthPassword
      * @param ClientInterface $httpClient PSR-18 HTTP Client implementation.
      * @param RequestFactoryInterface $requestFactory PSR-17 HTTP Factory implementation.
      * @param StreamFactoryInterface $streamFactory PSR-17 HTTP Factory implementation.
@@ -70,38 +57,6 @@ class Client
         $this->streamFactory = $streamFactory;
     }
 
-    public function setAccessToken(string $accessToken)
-    {
-        $this->accessToken = $accessToken;
-    }
-
-    /**
-     * Helper method to handle errors in json_decode
-     *
-     * @param string $json
-     * @param bool $assoc
-     * @param int $depth
-     * @param int $options
-     * @return mixed
-     * @throws Exception
-     */
-    protected function json_decode(string $json, bool $assoc = true, int $depth = 512, int $options = 0)
-    {
-        // Clear json_last_error()
-        \json_encode(null);
-
-        $data = @\json_decode($json, $assoc, $depth, $options);
-
-        if (\json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception(\sprintf(
-                'Unable to decode JSON: %s',
-                \json_last_error_msg()
-            ));
-        }
-
-        return $data;
-    }
-
     /**
      * @param string $path
      * @param string|null $accessToken
@@ -109,13 +64,14 @@ class Client
      * @return array
      * @throws ClientExceptionInterface
      * @throws Exception
+     * @throws \JsonException
      */
     public function call(string $path, ?string $accessToken = null, array $inputData = []): array
     {
-        if (count($inputData) === 0) {
+        if (\count($inputData) === 0) {
             $inputData = '{}';
         } else {
-            $inputData = \json_encode($inputData);
+            $inputData = \json_encode($inputData, JSON_THROW_ON_ERROR);
         }
 
         $request = (
@@ -134,26 +90,31 @@ class Client
             throw new Exception('Error on ' . $path . ': ' . $response->getBody());
         }
 
-        return $this->json_decode((string) $response->getBody());
+        return \json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
-     * @param string|null $lang
-     * @return array
-     * @throws ClientExceptionInterface|Exception
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
+     * @throws Exception
      */
-    public function info(?string $lang = null): array
+    public function info(): array
     {
-        if ($this->info === null || !\array_key_exists($lang, $this->info)) {
-            $inputData = [];
-            if ($lang !== null) {
-                $inputData['lang'] = $lang;
-            }
-            $this->info[$lang ?? 'none'] = $this->call('/info', null, $inputData);
+        if (!isset($this->info)) {
+            $this->info = $this->call('/info');
         }
-        return $this->info[$lang ?? 'none'];
+        return $this->info;
     }
 
+    /**
+     * @param string $accessToken
+     * @param string $processId
+     * @param string $clientName
+     * @return array
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \JsonException
+     */
     public function credentialsList(
         string $accessToken,
         string $processId,
@@ -167,6 +128,17 @@ class Client
         ]);
     }
 
+    /**
+     * @param string $accessToken
+     * @param string $credentialID
+     * @param string $processId
+     * @param string $clientName
+     * @param string|null $certificates
+     * @return array
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \JsonException
+     */
     public function credentialsInfo(
         string $accessToken,
         string $credentialID,
@@ -188,6 +160,17 @@ class Client
         return $this->call('/credentials/info', $accessToken, $inputData);
     }
 
+    /**
+     * @param string $accessToken
+     * @param string $credentialID
+     * @param array $hashes
+     * @param string $processId
+     * @param string $clientName
+     * @return array
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \JsonException
+     */
     public function credentialsAuthorize(
         string $accessToken,
         string $credentialID,
@@ -209,6 +192,18 @@ class Client
         return $this->call('/credentials/authorize', $accessToken, $inputData);
     }
 
+    /**
+     * @param string $accessToken
+     * @param string $credentialID
+     * @param string $sad
+     * @param array $hashes
+     * @param string $processId
+     * @param string $clientName
+     * @return array
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \JsonException
+     */
     public function signaturesSignHash(
         string $accessToken,
         string $credentialID,
@@ -229,5 +224,32 @@ class Client
         ];
 
         return $this->call('/signatures/signHash', $accessToken, $inputData)['signatures'];
+    }
+
+    /**
+     * @param string $refreshToken
+     * @param string $credentialID
+     * @param string $processId
+     * @param string $clientName
+     * @return array
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \JsonException
+     */
+    public function signatureAccountUpdateToken(
+        string $refreshToken,
+        string $credentialID,
+        string $processId,
+        string $clientName
+    ): array {
+        $inputData = [
+            'credentialID' => $credentialID,
+            'clientData' => [
+                'processId' => $processId,
+                'clientName' => $clientName
+            ]
+        ];
+
+        return $this->call('/signatureAccount/updateToken', $refreshToken, $inputData);
     }
 }
