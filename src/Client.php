@@ -217,7 +217,7 @@ class Client
      * @throws \JsonException
      * @throws Exception
      */
-    public function v2credentialsAuthorize(
+    public function v2CredentialsAuthorize(
         string $accessToken,
         string $credentialID,
         array $hashes,
@@ -279,7 +279,7 @@ class Client
      * @throws \JsonException
      * @throws Exception
      */
-    public function v2signaturesSignHash(
+    public function v2SignaturesSignHash(
         string $accessToken,
         string $credentialID,
         string $sad,

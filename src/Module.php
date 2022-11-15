@@ -83,7 +83,7 @@ class Module implements
 
         $hash = \base64_encode($digestInfo);
 
-        $this->client->v2credentialsAuthorize(
+        $this->client->v2CredentialsAuthorize(
             $this->accessToken,
             $this->credentialId,
             [$this->documentName => $hash],
@@ -93,7 +93,7 @@ class Module implements
 
         $sad = $this->client->credentialsAuthorizeVerify($this->processId)['sad'];
 
-        $this->client->v2signaturesSignHash(
+        $this->client->v2SignaturesSignHash(
             $this->accessToken,
             $this->credentialId,
             $sad,

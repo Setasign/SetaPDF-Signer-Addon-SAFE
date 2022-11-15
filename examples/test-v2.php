@@ -31,7 +31,7 @@ $client = new Client(
     $streamFactory
 );
 
-$a = $client->v2credentialsAuthorize(
+$a = $client->v2CredentialsAuthorize(
     $accessToken,
     $credentialId,
     $hashes = [
@@ -46,7 +46,7 @@ var_dump($a);
 $sad = $client->credentialsAuthorizeVerify($processId)['sad'];
 var_dump($sad);
 
-$b = $client->v2signaturesSignHash(
+$b = $client->v2SignaturesSignHash(
     $accessToken,
     $credentialId,
     $sad,

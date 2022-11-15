@@ -20,7 +20,7 @@ if (!file_exists('settings.php')) {
 $settings = require 'settings.php';
 $apiUri = $settings['apiUri'];
 
-$fileToSign = __DIR__ . '/assets/Laboratory-Report.pdf';
+$fileToSign = __DIR__ . '/assets/camtown/Laboratory-Report.pdf';
 $resultPath = 'signed.pdf';
 
 $processId = Uuid::uuid4()->toString();
