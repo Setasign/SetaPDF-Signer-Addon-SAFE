@@ -83,24 +83,28 @@ class Module implements
 
         $hash = \base64_encode($digestInfo);
 
-        $sad = $this->client->credentialsAuthorize(
+        $this->client->v2credentialsAuthorize(
             $this->accessToken,
             $this->credentialId,
             [$this->documentName => $hash],
             $this->processId,
             $this->clientName
-        )['sad'];
+        );
 
-        $signatureValue = $this->client->signaturesSignHash(
+        $sad = $this->client->credentialsAuthorizeVerify($this->processId)['sad'];
+
+        $this->client->v2signaturesSignHash(
             $this->accessToken,
             $this->credentialId,
             $sad,
             [$hash],
             $this->processId,
             $this->clientName
-        )[0];
+        );
 
-        // pass the signature value to the CMS structure
+        $signatureValue = $this->client->signaturesSignHashVerify($this->processId)[0];
+
+            // pass the signature value to the CMS structure
         $padesModule->setSignatureValue(\base64_decode($signatureValue));
 
         return (string)$padesModule->getCms();

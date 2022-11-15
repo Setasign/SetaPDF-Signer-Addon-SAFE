@@ -16,8 +16,7 @@ of the Portuguese State to digital sign PDFs in pure PHP.
 - We're also not able to authenticate as a Portuguese citizen and were dependent on
   users to provide test credentials/tokens.
 - The hashing algorithm is fixated to SHA256 as per documentation and the information from the /credentials/info
-  endpoint are ignored. 
-- The /v2/ endpoints are currently not implemented.
+  endpoint are ignored.
 
 ## Requirements
 
