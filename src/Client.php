@@ -61,12 +61,12 @@ class Client
      * @param string $path
      * @param string|null $accessToken
      * @param array $inputData
-     * @return array
+     * @return ?array
      * @throws ClientExceptionInterface
      * @throws Exception
      * @throws \JsonException
      */
-    public function call(string $path, ?string $accessToken = null, array $inputData = []): array
+    public function call(string $path, ?string $accessToken = null, array $inputData = []): ?array
     {
         if (\count($inputData) === 0) {
             $inputData = '{}';
@@ -90,7 +90,43 @@ class Client
             throw new Exception('Error on ' . $path . ': ' . $response->getBody());
         }
 
-        return \json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        $body = (string) $response->getBody();
+        if ($body === '') {
+            return null;
+        }
+
+        return \json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \JsonException
+     */
+    public function callGet(string $path, $data = []): array
+    {
+        $tries = 5;
+        while ($tries-- > 0) {
+            $request = (
+            $this->requestFactory->createRequest('GET', $this->apiUri . $path . '?' . \http_build_query($data))
+                ->withHeader('Authorization', 'Basic ' . \base64_encode($this->basicAuthUsername . ':' . $this->basicAuthPassword))
+            );
+
+            $response = $this->httpClient->sendRequest($request);
+            $statusCode = $response->getStatusCode();
+            if ($statusCode === 204) {
+                \sleep(1);
+                continue;
+            }
+
+            if ($response->getStatusCode() !== 200) {
+                throw new Exception('Error on ' . $path . ': ' . $response->getBody());
+            }
+
+            return \json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        throw new Exception('Endpoint ' . $path . ' still returns status code 204 after 5 tries.');
     }
 
     /**
@@ -107,13 +143,9 @@ class Client
     }
 
     /**
-     * @param string $accessToken
-     * @param string $processId
-     * @param string $clientName
-     * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
      * @throws \JsonException
+     * @throws Exception
      */
     public function credentialsList(
         string $accessToken,
@@ -129,15 +161,9 @@ class Client
     }
 
     /**
-     * @param string $accessToken
-     * @param string $credentialID
-     * @param string $processId
-     * @param string $clientName
-     * @param string|null $certificates
-     * @return array
      * @throws ClientExceptionInterface
-     * @throws Exception
      * @throws \JsonException
+     * @throws Exception
      */
     public function credentialsInfo(
         string $accessToken,
@@ -161,12 +187,6 @@ class Client
     }
 
     /**
-     * @param string $accessToken
-     * @param string $credentialID
-     * @param array $hashes
-     * @param string $processId
-     * @param string $clientName
-     * @return array
      * @throws ClientExceptionInterface
      * @throws Exception
      * @throws \JsonException
@@ -193,16 +213,44 @@ class Client
     }
 
     /**
-     * @param string $accessToken
-     * @param string $credentialID
-     * @param string $sad
-     * @param array $hashes
-     * @param string $processId
-     * @param string $clientName
-     * @return array
      * @throws ClientExceptionInterface
+     * @throws \JsonException
+     * @throws Exception
+     */
+    public function v2credentialsAuthorize(
+        string $accessToken,
+        string $credentialID,
+        array $hashes,
+        string $processId,
+        string $clientName
+    ): bool {
+        $inputData = [
+            'numSignatures' => \count($hashes),
+            'hashes' => \array_values($hashes),
+            'credentialID' => $credentialID,
+            'clientData' => [
+                'processId' => $processId,
+                'clientName' => $clientName,
+                'documentNames' => \array_keys($hashes),
+            ]
+        ];
+
+        return $this->call('/v2/credentials/authorize', $accessToken, $inputData) === null;
+    }
+
+    /**
      * @throws Exception
      * @throws \JsonException
+     */
+    public function credentialsAuthorizeVerify(string $processId)
+    {
+        return $this->callGet('/credentials/authorize/verify', ['processId' => $processId]);
+    }
+
+    /**
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
+     * @throws Exception
      */
     public function signaturesSignHash(
         string $accessToken,
@@ -227,14 +275,46 @@ class Client
     }
 
     /**
-     * @param string $refreshToken
-     * @param string $credentialID
-     * @param string $processId
-     * @param string $clientName
-     * @return array
      * @throws ClientExceptionInterface
+     * @throws \JsonException
+     * @throws Exception
+     */
+    public function v2signaturesSignHash(
+        string $accessToken,
+        string $credentialID,
+        string $sad,
+        array $hashes,
+        string $processId,
+        string $clientName
+    ): bool {
+        $inputData = [
+            'credentialID' => $credentialID,
+            'sad' => $sad,
+            'hashes' => \array_values($hashes),
+            'signAlgo' => '1.2.840.113549.1.1.11',
+            'clientData' => [
+                'processId' => $processId,
+                'clientName' => $clientName
+            ]
+        ];
+
+        return $this->call('/v2//signatures/signHash', $accessToken, $inputData) === null;
+    }
+
+
+    /**
      * @throws Exception
      * @throws \JsonException
+     */
+    public function signaturesSignHashVerify(string $processId)
+    {
+        return $this->callGet('/signatures/signHash/verify', ['processId' => $processId])['signatures'];
+    }
+
+    /**
+     * @throws ClientExceptionInterface
+     * @throws \JsonException
+     * @throws Exception
      */
     public function signatureAccountUpdateToken(
         string $refreshToken,
