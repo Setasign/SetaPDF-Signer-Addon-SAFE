@@ -12,8 +12,6 @@ error_reporting(E_ALL);
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
-session_start();
-
 if (!file_exists('settings.php')) {
     echo 'The settings.php file is missing. See settings.php.dist for an example.';
     die();
