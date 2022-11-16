@@ -21,7 +21,7 @@ $settings = require 'settings.php';
 $apiUri = $settings['apiUri'];
 
 $fileToSign = __DIR__ . '/assets/camtown/Laboratory-Report.pdf';
-$resultPath = 'signed.pdf';
+$resultPath = 'output/demo.pdf';
 
 $processId = Uuid::uuid4()->toString();
 $accessToken = $settings['accessToken'];
