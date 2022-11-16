@@ -94,6 +94,32 @@ Its constructor requires the following arguments:
 Additionally, the module offers a `setDocumentName()` method. This method allows you to define the document name related
 to the hash send to the SAFE API. By default, the document name is set to "document.pdf".
 
+### The `Batch` class
+
+This class allows you to digital sign several PDF files in a single signature flow.
+
+Its constructor requires the following arguments:
+
+- `$accessToken` - The access token which is passed with the custom header SAFEAuthorization.
+- `$client` - An instance of the `Client` class.
+- `$credentialId` - The id of the credentials (can be received as demoed in [list-credentials.php](examples/list-credentials.php))
+- `$processId` - A process id (a new Globally Unique Identifier (GUID) for each invocation).
+- `$clientName` - The value for the clientName field.
+
+You can pass several files as an array to the `sign($files)` method:
+
+```php
+$files = [
+    [
+        'in' => string|SetaPDF_Core_Reader_ReaderInterface,
+        'out' => 'path/to/result.pdf'    
+    ]   
+];
+```
+
+Additionally, the `sign()` method accepts callbacks to e.g. add individual signature 
+appearances or signature properties. For an example see the [batch-complex.php](examples/batch-complex.php) demo.
+
 ## License
 
 This package is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
