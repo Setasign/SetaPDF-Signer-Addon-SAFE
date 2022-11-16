@@ -124,11 +124,11 @@ $callback = static function(
 //};
 
 // If you want to add timestamps to the signautre you can pass an appropriate module like this:
-//$url = 'https://freetsa.org/tsr'; // UPDATE THIS TO THE SERVICE OF YOUR TRUST
-//$timestampModule = new SetaPDF_Signer_Timestamp_Module_Rfc3161_Curl($url);
-//$batch->setTimestampModule($timestampModule);
-//$batch->getTrustedCertificates()
-//    ->addFromFile('assets/freetsa-cacert.pem'); // for LTV we need to add this root as a trusted root, too.
+$url = 'https://freetsa.org/tsr'; // UPDATE THIS TO THE SERVICE OF YOUR TRUST
+$timestampModule = new SetaPDF_Signer_Timestamp_Module_Rfc3161_Curl($url);
+$batch->setTimestampModule($timestampModule);
+$batch->getTrustedCertificates()
+    ->addFromFile('assets/freetsa-cacert.pem'); // for LTV we need to add this root as a trusted root, too.
 
 try {
     $batch->sign($files, true, $callback/*, $tempFileCallback*/);
