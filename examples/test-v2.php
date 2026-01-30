@@ -6,10 +6,6 @@ declare(strict_types=1);
 use Ramsey\Uuid\Uuid;
 use setasign\SetaPDF\Signer\Module\SAFE\Client;
 
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
-
 require_once(__DIR__ . '/../vendor/autoload.php');
 
 $settings = require 'settings.php';

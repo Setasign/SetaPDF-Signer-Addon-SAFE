@@ -5,10 +5,9 @@ declare(strict_types=1);
 use Ramsey\Uuid\Uuid;
 use setasign\SetaPDF\Signer\Module\SAFE\Client;
 use setasign\SetaPDF\Signer\Module\SAFE\Module;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Signer\Signer;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -59,12 +58,12 @@ $module->setExtraCertificates($certificates);
 $module->setDocumentName('my-document-name.pdf');
 
 // create a writer instance
-$writer = new SetaPDF_Core_Writer_File($resultPath);
+$writer = new FileWriter($resultPath);
 // create the document instance
-$document = SetaPDF_Core_Document::loadByFilename($fileToSign, $writer);
+$document = Document::loadByFilename($fileToSign, $writer);
 
 // create the signer instance
-$signer = new SetaPDF_Signer($document);
+$signer = new Signer($document);
 
 $signer->sign($module);
 

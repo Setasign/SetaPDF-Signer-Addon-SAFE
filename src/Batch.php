@@ -5,14 +5,30 @@ declare(strict_types=1);
 namespace setasign\SetaPDF\Signer\Module\SAFE;
 
 use Psr\Http\Client\ClientExceptionInterface;
-use SetaPDF_Signer_Asn1_Element;
-use SetaPDF_Signer_Asn1_Oid;
-use SetaPDF_Signer_Digest;
-use SetaPDF_Signer_DocumentSecurityStore;
-use SetaPDF_Signer_Timestamp_Module_ModuleInterface;
-use SetaPDF_Signer_ValidationRelatedInfo_Collector;
-use SetaPDF_Signer_ValidationRelatedInfo_LoggerInterface;
-use SetaPDF_Signer_X509_Collection;
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Document\ObjectNotDefinedException;
+use setasign\SetaPDF2\Core\Document\ObjectNotFoundException;
+use setasign\SetaPDF2\Core\Exception;
+use setasign\SetaPDF2\Core\Parser\Pdf\InvalidTokenException;
+use setasign\SetaPDF2\Core\Reader\FileReader;
+use setasign\SetaPDF2\Core\Reader\ReaderInterface;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Core\Writer\TempFileWriter;
+use setasign\SetaPDF2\Core\Writer\WriterInterface;
+use setasign\SetaPDF2\NotImplementedException;
+use setasign\SetaPDF2\Signer\Asn1\Element as Asn1Element;
+use setasign\SetaPDF2\Signer\Asn1\Oid as Asn1Oid;
+use setasign\SetaPDF2\Signer\Digest;
+use setasign\SetaPDF2\Signer\DocumentSecurityStore;
+use setasign\SetaPDF2\Signer\Exception\ContentLength;
+use setasign\SetaPDF2\Signer\Signature\Module\Pades;
+use setasign\SetaPDF2\Signer\SignatureField;
+use setasign\SetaPDF2\Signer\Signer;
+use setasign\SetaPDF2\Signer\Timestamp\Module\ModuleInterface as TsModuleInterface;
+use setasign\SetaPDF2\Signer\ValidationRelatedInfo\Collector;
+use setasign\SetaPDF2\Signer\ValidationRelatedInfo\LoggerInterface;
+use setasign\SetaPDF2\Signer\X509\Collection;
+use setasign\SetaPDF2\Signer\X509\Certificate;
 
 class Batch
 {
@@ -22,12 +38,12 @@ class Batch
     protected string $credentialId;
     protected string $processId;
     protected string $clientName;
-    protected string|\SetaPDF_Signer_X509_Certificate $certificate;
-    protected array|SetaPDF_Signer_X509_Collection $extraCertificates;
-    protected SetaPDF_Signer_Timestamp_Module_ModuleInterface $timestampModule;
-    protected SetaPDF_Signer_X509_Collection $trustedCertificates;
+    protected string|Certificate $certificate;
+    protected array|Collection $extraCertificates;
+    protected TsModuleInterface $timestampModule;
+    protected Collection $trustedCertificates;
     /**
-     * @var SetaPDF_Signer_ValidationRelatedInfo_LoggerInterface[]
+     * @var LoggerInterface[]
      */
     protected array $vriLoggers;
 
@@ -44,7 +60,7 @@ class Batch
         $this->credentialId = $credentialId;
         $this->processId = $processId;
         $this->clientName = $clientName;
-        $this->trustedCertificates = new SetaPDF_Signer_X509_Collection();
+        $this->trustedCertificates = new Collection();
     }
 
     /**
@@ -67,13 +83,13 @@ class Batch
         return $this->signatureConentLength;
     }
 
-    public function setCertificate(string|\SetaPDF_Signer_X509_Certificate $certificate): void
+    public function setCertificate(string|Certificate $certificate): void
     {
         $this->certificate = $certificate;
     }
 
     /**
-     * @param array|SetaPDF_Signer_X509_Collection $extraCertificates PEM encoded certificates or pathes to PEM encoded
+     * @param array|Collection $extraCertificates PEM encoded certificates or pathes to PEM encoded
      *                                                                certificates.
      * @return void
      */
@@ -82,41 +98,48 @@ class Batch
         $this->extraCertificates = $extraCertificates;
     }
 
-    public function getTrustedCertificates(): SetaPDF_Signer_X509_Collection
+    public function getTrustedCertificates(): Collection
     {
         return $this->trustedCertificates;
     }
 
-    public function setTimestampModule(SetaPDF_Signer_Timestamp_Module_ModuleInterface $timestampModule): void
+    public function setTimestampModule(TsModuleInterface $timestampModule): void
     {
         $this->timestampModule = $timestampModule;
     }
 
     /**
-     * @param array{in:string|\SetaPDF_Core_Reader_ReaderInterface, out: string|\SetaPDF_Core_Writer_WriterInterface, documentName: ?string}[] $files
+     * @param array{in:string|ReaderInterface, out: string|WriterInterface, documentName: ?string}[] $files
      * @param bool $addLtv
      * @param callable|null $callback A callable which needs to have the following signature:
-     *                                `function($key, array $file, SetaPDF_Signer $signer, SetaPDF_Signer_Signature_Module_Pades $padesModule, SetaPDF_Core_Document $document): SetaPDF_Signer_SignatureField`
+     *                                `function($key, array $file, setasign\SetaPDF2\Signer\Signer $signer, setasign\SetaPDF2\Signer\Signature\Module\Pades $padesModule, setasign\SetaPDF2\Core\Document $document): setasign\SetaPDF2\Signer\SignatureField`
      * @param callable|null $tmpFileCallback A callable which needs to have the following signature:
-     *                                       `function($key, $file): SetaPDF_Core_Writer_FileInterface`
+     *                                       `function($key, $file): setasign\SetaPDF2\Core\Writer\FileInterface`
      * @return void
-     * @throws ClientExceptionInterface
+     * @throws ObjectNotDefinedException
+     * @throws ObjectNotFoundException
      * @throws Exception
      * @throws \JsonException
-     * @throws \SetaPDF_Core_Exception
-     * @throws \SetaPDF_Core_Parser_CrossReferenceTable_Exception
-     * @throws \SetaPDF_Core_Parser_Pdf_InvalidTokenException
-     * @throws \SetaPDF_Core_Reader_Exception
-     * @throws \SetaPDF_Core_SecHandler_Exception
-     * @throws \SetaPDF_Signer_Asn1_Exception
-     * @throws \SetaPDF_Signer_Exception
-     * @throws \SetaPDF_Signer_Exception_ContentLength
-     * @throws \SetaPDF_Signer_ValidationRelatedInfo_Exception
+     * @throws ClientExceptionInterface
+     * @throws Exception
+     * @throws \setasign\SetaPDF2\Core\Parser\CrossReferenceTable\Exception
+     * @throws \setasign\SetaPDF2\Core\Parser\Exception
+     * @throws InvalidTokenException
+     * @throws \setasign\SetaPDF2\Core\Reader\Exception
+     * @throws \setasign\SetaPDF2\Core\SecHandler\Exception
+     * @throws \setasign\SetaPDF2\Core\Type\Exception
+     * @throws \setasign\SetaPDF2\Core\Type\IndirectReference\Exception
+     * @throws \setasign\SetaPDF2\Exception
+     * @throws NotImplementedException
+     * @throws \setasign\SetaPDF2\Signer\Asn1\Exception
+     * @throws \setasign\SetaPDF2\Signer\Exception
+     * @throws ContentLength
+     * @throws \setasign\SetaPDF2\Signer\ValidationRelatedInfo\Exception
      */
     public function sign(array $files, bool $addLtv = true, callable $callback = null, callable $tmpFileCallback = null): void
     {
         if (!\is_callable($callback)) {
-            $callback = static function($key, array $file, \SetaPDF_Signer $signer) {
+            $callback = static function($key, array $file, Signer $signer) {
                 return $signer->addSignatureField();
             };
         }
@@ -126,14 +149,14 @@ class Batch
 
         $no = 1;
         foreach ($files as $key => $file) {
-            if (!$file['in'] instanceof \SetaPDF_Core_Reader_ReaderInterface) {
-                $reader = new \SetaPDF_Core_Reader_File($file['in']);
+            if (!$file['in'] instanceof ReaderInterface) {
+                $reader = new FileReader($file['in']);
             } else {
                 $reader = $file['in'];
             }
 
-            if (!$file['out'] instanceof \SetaPDF_Core_Writer_WriterInterface) {
-                $writer = new \SetaPDF_Core_Writer_File($file['out']);
+            if (!$file['out'] instanceof WriterInterface) {
+                $writer = new FileWriter($file['out']);
             } else {
                 $writer = $file['out'];
             }
@@ -141,22 +164,22 @@ class Batch
             if (\is_callable($tmpFileCallback)) {
                 $tempWriter = $tmpFileCallback($key, $file);
             } else {
-                $tempWriter = new \SetaPDF_Core_Writer_TempFile();
+                $tempWriter = new TempFileWriter();
             }
 
-            $document = \SetaPDF_Core_Document::load($reader, $writer);
-            $signer = new \SetaPDF_Signer($document);
+            $document = Document::load($reader, $writer);
+            $signer = new Signer($document);
             $signer->setAllowSignatureContentLengthChange(false);
             $signer->setSignatureContentLength($this->getSignatureContentLength());
 
-            $padesModule = new \SetaPDF_Signer_Signature_Module_Pades();
-            $padesModule->setDigest(SetaPDF_Signer_Digest::SHA_256);
+            $padesModule = new Pades();
+            $padesModule->setDigest(Digest::SHA_256);
             $padesModule->setCertificate($this->certificate);
             $padesModule->setExtraCertificates($this->extraCertificates);
 
             $field = $callback($key, $file, $signer, $padesModule, $document);
-            if (!$field instanceof \SetaPDF_Signer_SignatureField) {
-                throw new \InvalidArgumentException('Callback does not return an instance of \SetaPDF_Signer_SignatureField.');
+            if (!$field instanceof SignatureField) {
+                throw new \InvalidArgumentException('Callback does not return an instance of setasign\SetaPDF2\Signer\SignatureField.');
             }
             $fieldName = $field->getQualifiedName();
             $signer->setSignatureFieldName($fieldName);
@@ -165,23 +188,23 @@ class Batch
 
             $hashValue = \hash($padesModule->getDigest(), $padesModule->getDataToSign($tmpDocument->getHashFile()), true);
 
-            $digestInfo = new SetaPDF_Signer_Asn1_Element(
-                SetaPDF_Signer_Asn1_Element::SEQUENCE | SetaPDF_Signer_Asn1_Element::IS_CONSTRUCTED, '',
+            $digestInfo = new Asn1Element(
+                Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED, '',
                 [
-                    new SetaPDF_Signer_Asn1_Element(
-                        SetaPDF_Signer_Asn1_Element::SEQUENCE | SetaPDF_Signer_Asn1_Element::IS_CONSTRUCTED, '',
+                    new Asn1Element(
+                        Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED, '',
                         [
-                            new SetaPDF_Signer_Asn1_Element(
-                                SetaPDF_Signer_Asn1_Element::OBJECT_IDENTIFIER,
-                                SetaPDF_Signer_Asn1_Oid::encode(
-                                    SetaPDF_Signer_Digest::getOid($padesModule->getDigest())
+                            new Asn1Element(
+                                Asn1Element::OBJECT_IDENTIFIER,
+                                Asn1Oid::encode(
+                                    Digest::getOid($padesModule->getDigest())
                                 )
                             ),
-                            new SetaPDF_Signer_Asn1_Element(SetaPDF_Signer_Asn1_Element::NULL)
+                            new Asn1Element(Asn1Element::NULL)
                         ]
                     ),
-                    new SetaPDF_Signer_Asn1_Element(
-                        SetaPDF_Signer_Asn1_Element::OCTET_STRING,
+                    new Asn1Element(
+                        Asn1Element::OCTET_STRING,
                         $hashValue
                     )
                 ]
@@ -227,9 +250,9 @@ class Batch
         $vriData = null;
         foreach ($this->client->signaturesSignHashVerify($this->processId) as $key => $signatureValue) {
             /**
-             * @var \SetaPDF_Core_Document $document
-             * @var \SetaPDF_Signer_Signature_Module_Pades $padesModule
-             * @var \SetaPDF_Signer $signer
+             * @var Document $document
+             * @var Pades $padesModule
+             * @var Signer $signer
              */
             $document = $data[$key]['document'];
             $padesModule = $data[$key]['padesModule'];
@@ -245,7 +268,7 @@ class Batch
 
             if ($addLtv) {
                 $mainWriter = $document->getWriter();
-                $tempWriter = new \SetaPDF_Core_Writer_TempFile();
+                $tempWriter = new TempFileWriter();
                 $document->setWriter($tempWriter);
             }
 
@@ -253,22 +276,22 @@ class Batch
             $signer->saveSignature($data[$key]['tmpDocument'], $cms);
 
             if ($addLtv) {
-                $document = \SetaPDF_Core_Document::loadByFilename($tempWriter->getPath(), $mainWriter);
+                $document = Document::loadByFilename($tempWriter->getPath(), $mainWriter);
                 $fieldName = $data[$key]['fieldName'];
 
                 // create a VRI collector instance
-                $collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector($this->trustedCertificates);
+                $collector = new Collector($this->trustedCertificates);
                 $this->vriLoggers[] = $collector->getLogger();
                 $vriData = $collector->getByFieldName(
                     $document,
                     $fieldName,
-                    SetaPDF_Signer_ValidationRelatedInfo_Collector::SOURCE_OCSP_OR_CRL,
+                    Collector::SOURCE_OCSP_OR_CRL,
                     null,
                     null,
                     $vriData // reuse previously gathered information
                 );
 
-                $dss = new SetaPDF_Signer_DocumentSecurityStore($document);
+                $dss = new DocumentSecurityStore($document);
                 $dss->addValidationRelatedInfoByFieldName(
                     $fieldName,
                     $vriData->getCrls(),

@@ -5,10 +5,8 @@ declare(strict_types=1);
 use Ramsey\Uuid\Uuid;
 use setasign\SetaPDF\Signer\Module\SAFE\Batch;
 use setasign\SetaPDF\Signer\Module\SAFE\Client;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Reader\FileReader;
+use setasign\SetaPDF2\Core\Reader\StringReader;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -61,11 +59,11 @@ $batch->getTrustedCertificates()
 // create a re-usable array of filenames (in/out)
 $files = [
     [
-        'in' => new SetaPDF_Core_Reader_File('assets/tektown/Laboratory-Report.pdf'),
+        'in' => new FileReader('assets/tektown/Laboratory-Report.pdf'),
         'out' => 'output/tektown-signed.pdf'
     ],
     [
-        'in' => new SetaPDF_Core_Reader_String(file_get_contents('assets/lenstown/Laboratory-Report.pdf')),
+        'in' => new StringReader(file_get_contents('assets/lenstown/Laboratory-Report.pdf')),
         'out' => 'output/lenstown-signed.pdf'
     ],
     [

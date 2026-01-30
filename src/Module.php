@@ -3,21 +3,21 @@
 namespace setasign\SetaPDF\Signer\Module\SAFE;
 
 use Psr\Http\Client\ClientExceptionInterface;
-use SetaPDF_Core_Reader_FilePath;
-use SetaPDF_Signer_Asn1_Element;
-use SetaPDF_Signer_Asn1_Oid;
-use SetaPDF_Signer_Digest;
-use SetaPDF_Signer_Signature_DictionaryInterface;
-use SetaPDF_Signer_Signature_DocumentInterface;
-use SetaPDF_Signer_Signature_Module_ModuleInterface;
-use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
+use setasign\SetaPDF2\Core\Reader\FilePath;
+use setasign\SetaPDF2\Signer\Asn1\Element as Asn1Element;
+use setasign\SetaPDF2\Signer\Asn1\Oid as Asn1Oid;
+use setasign\SetaPDF2\Signer\Digest;
+use setasign\SetaPDF2\Signer\Signature\Module\DictionaryInterface;
+use setasign\SetaPDF2\Signer\Signature\Module\DocumentInterface;
+use setasign\SetaPDF2\Signer\Signature\Module\ModuleInterface;
+use setasign\SetaPDF2\Signer\Signature\Module\PadesProxyTrait;
 
 class Module implements
-    SetaPDF_Signer_Signature_Module_ModuleInterface,
-    SetaPDF_Signer_Signature_DictionaryInterface,
-    SetaPDF_Signer_Signature_DocumentInterface
+    ModuleInterface,
+    DictionaryInterface,
+    DocumentInterface
 {
-    use SetaPDF_Signer_Signature_Module_PadesProxyTrait;
+    use PadesProxyTrait;
 
     protected Client $client;
     protected string $accessToken;
@@ -47,11 +47,14 @@ class Module implements
     }
 
     /**
+     * @param FilePath $tmpPath
+     * @return string
      * @throws ClientExceptionInterface
-     * @throws \SetaPDF_Signer_Exception
-     * @throws Exception|\JsonException
+     * @throws Exception
+     * @throws \JsonException
+     * @throws \setasign\SetaPDF2\Signer\Exception
      */
-    public function createSignature(SetaPDF_Core_Reader_FilePath $tmpPath): string
+    public function createSignature(FilePath $tmpPath): string
     {
         $hashAlgorithm = 'sha256';
         $padesModule = $this->_getPadesModule();
@@ -59,23 +62,23 @@ class Module implements
 
         $hashValue = \hash($hashAlgorithm, $padesModule->getDataToSign($tmpPath), true);
 
-        $digestInfo = new SetaPDF_Signer_Asn1_Element(
-            SetaPDF_Signer_Asn1_Element::SEQUENCE | SetaPDF_Signer_Asn1_Element::IS_CONSTRUCTED, '',
+        $digestInfo = new Asn1Element(
+            Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED, '',
             [
-                new SetaPDF_Signer_Asn1_Element(
-                    SetaPDF_Signer_Asn1_Element::SEQUENCE | SetaPDF_Signer_Asn1_Element::IS_CONSTRUCTED, '',
+                new Asn1Element(
+                    Asn1Element::SEQUENCE | Asn1Element::IS_CONSTRUCTED, '',
                     [
-                        new SetaPDF_Signer_Asn1_Element(
-                            SetaPDF_Signer_Asn1_Element::OBJECT_IDENTIFIER,
-                            SetaPDF_Signer_Asn1_Oid::encode(
-                                SetaPDF_Signer_Digest::getOid($padesModule->getDigest())
+                        new Asn1Element(
+                            Asn1Element::OBJECT_IDENTIFIER,
+                            Asn1Oid::encode(
+                                Digest::getOid($padesModule->getDigest())
                             )
                         ),
-                        new SetaPDF_Signer_Asn1_Element(SetaPDF_Signer_Asn1_Element::NULL)
+                        new Asn1Element(Asn1Element::NULL)
                     ]
                 ),
-                new SetaPDF_Signer_Asn1_Element(
-                    SetaPDF_Signer_Asn1_Element::OCTET_STRING,
+                new Asn1Element(
+                    Asn1Element::OCTET_STRING,
                     $hashValue
                 )
             ]

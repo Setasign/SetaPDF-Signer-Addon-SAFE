@@ -5,10 +5,17 @@ declare(strict_types=1);
 use Ramsey\Uuid\Uuid;
 use setasign\SetaPDF\Signer\Module\SAFE\Batch;
 use setasign\SetaPDF\Signer\Module\SAFE\Client;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Font\Type0\Subset as Type0Subset;
+use setasign\SetaPDF2\Core\Reader\FileReader;
+use setasign\SetaPDF2\Core\Reader\StringReader;
+use setasign\SetaPDF2\Core\Writer\FileInterface;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Signer\Signature\Appearance\Dynamic as DynamicAppearance;
+use setasign\SetaPDF2\Signer\Signature\Module\Pades;
+use setasign\SetaPDF2\Signer\SignatureField;
+use setasign\SetaPDF2\Signer\Signer;
+use setasign\SetaPDF2\Signer\Timestamp\Module\Rfc3161\Curl as CurlTsModule;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -61,11 +68,11 @@ $batch->getTrustedCertificates()
 // create a re-usable array of filenames (in/out)
 $files = [
     [
-        'in' => new SetaPDF_Core_Reader_File('assets/tektown/Laboratory-Report.pdf'),
+        'in' => new FileReader('assets/tektown/Laboratory-Report.pdf'),
         'out' => 'output/tektown-signed.pdf'
     ],
     [
-        'in' => new SetaPDF_Core_Reader_String(file_get_contents('assets/lenstown/Laboratory-Report.pdf')),
+        'in' => new StringReader(file_get_contents('assets/lenstown/Laboratory-Report.pdf')),
         'out' => 'output/lenstown-signed.pdf'
     ],
     [
@@ -84,17 +91,17 @@ $files = [
 $callback = static function(
     $key,
     array $file,
-    SetaPDF_Signer $signer,
-    SetaPDF_Signer_Signature_Module_Pades $padesModule,
-    SetaPDF_Core_Document $document
-): SetaPDF_Signer_SignatureField {
+    Signer $signer,
+    Pades $padesModule,
+    Document $document
+): SignatureField {
     // set some signature properties
     $signer->setReason('Signature for document ' . basename($file['out']));
     $signer->setLocation('Test Environment');
 
-    $appearance = new SetaPDF_Signer_Signature_Appearance_Dynamic($padesModule);
+    $appearance = new DynamicAppearance($padesModule);
 //    // let's create a font instance to not use standard fonts (not embedded)
-//    $font = new SetaPDF_Core_Font_Type0_Subset(
+//    $font = new Type0Subset(
 //        $document,
 //        'assets/fonts/DejaVu/ttf/DejaVuSans.ttf'
 //    );
@@ -103,9 +110,9 @@ $callback = static function(
     $signer->setAppearance($appearance);
 
     return $signer->addSignatureField(
-        SetaPDF_Signer_SignatureField::DEFAULT_FIELD_NAME,
+        SignatureField::DEFAULT_FIELD_NAME,
         1,
-        SetaPDF_Signer_SignatureField::POSITION_LEFT_TOP,
+        SignatureField::POSITION_LEFT_TOP,
         [
             'x' => 20,
             'y' => -20
@@ -119,13 +126,13 @@ $callback = static function(
  * create another callback, that has to return a writer instance for this file.
  * NOTE: You need to clean up these files on your own!
  */
-//$tempFileCallback = static function($key, $file): SetaPDF_Core_Writer_FileInterface {
-//    return new SetaPDF_Core_Writer_File('output/tmp-' . $key);
+//$tempFileCallback = static function($key, $file): FileInterface {
+//    return new FileWriter('output/tmp-' . $key);
 //};
 
 // If you want to add timestamps to the signautre you can pass an appropriate module like this:
 $url = 'https://freetsa.org/tsr'; // UPDATE THIS TO THE SERVICE OF YOUR TRUST
-$timestampModule = new SetaPDF_Signer_Timestamp_Module_Rfc3161_Curl($url);
+$timestampModule = new CurlTsModule($url);
 $batch->setTimestampModule($timestampModule);
 $batch->getTrustedCertificates()
     ->addFromFile('assets/freetsa-cacert.pem'); // for LTV we need to add this root as a trusted root, too.
@@ -133,7 +140,7 @@ $batch->getTrustedCertificates()
 try {
     $batch->sign($files, true, $callback/*, $tempFileCallback*/);
 
-} catch (SetaPDF_Signer_ValidationRelatedInfo_Exception $e) {
+} catch (setasign\SetaPDF2\Signer\ValidationRelatedInfo\Exception $e) {
     // If VRI (validation related information) cannot be resolved, let's check the logs:
     foreach ($batch->getVriLoggers() as $key => $logger) {
         foreach ($logger->getLogs() as $log) {

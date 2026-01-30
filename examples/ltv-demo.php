@@ -5,10 +5,13 @@ declare(strict_types=1);
 use Ramsey\Uuid\Uuid;
 use setasign\SetaPDF\Signer\Module\SAFE\Client;
 use setasign\SetaPDF\Signer\Module\SAFE\Module;
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+use setasign\SetaPDF2\Core\Document;
+use setasign\SetaPDF2\Core\Writer\FileWriter;
+use setasign\SetaPDF2\Core\Writer\TempFileWriter;
+use setasign\SetaPDF2\Signer\DocumentSecurityStore;
+use setasign\SetaPDF2\Signer\Signer;
+use setasign\SetaPDF2\Signer\ValidationRelatedInfo\Collector;
+use setasign\SetaPDF2\Signer\X509\Collection;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
 
@@ -57,16 +60,16 @@ $module->setCertificate($certificate);
 $module->setExtraCertificates($certificates);
 
 // create a collection of trusted certificats:
-$trustedCertificates = new SetaPDF_Signer_X509_Collection($certificates[count($certificates) - 1]);
+$trustedCertificates = new Collection($certificates[count($certificates) - 1]);
 
 // create a writer instance
-$writer = new SetaPDF_Core_Writer_File($resultPath);
-$tmpWriter = new SetaPDF_Core_Writer_TempFile();
+$writer = new FileWriter($resultPath);
+$tmpWriter = new TempFileWriter();
 // create the document instance
-$document = SetaPDF_Core_Document::loadByFilename($fileToSign, $tmpWriter);
+$document = Document::loadByFilename($fileToSign, $tmpWriter);
 
 // create the signer instance
-$signer = new SetaPDF_Signer($document);
+$signer = new Signer($document);
 
 // add a signature field manually to get access to its name
 $signatureField = $signer->addSignatureField();
@@ -76,10 +79,10 @@ $signer->setSignatureFieldName($signatureField->getQualifiedName());
 $signer->sign($module);
 
 // create a new instance
-$document = SetaPDF_Core_Document::loadByFilename($tmpWriter->getPath(), $writer);
+$document = Document::loadByFilename($tmpWriter->getPath(), $writer);
 
 // create a VRI collector instance
-$collector = new SetaPDF_Signer_ValidationRelatedInfo_Collector($trustedCertificates);
+$collector = new Collector($trustedCertificates);
 
 // get VRI for the timestamp signature
 $vriData = $collector->getByFieldName(
@@ -93,7 +96,7 @@ $vriData = $collector->getByFieldName(
 //}
 
 // and add it to the document.
-$dss = new SetaPDF_Signer_DocumentSecurityStore($document);
+$dss = new DocumentSecurityStore($document);
 $dss->addValidationRelatedInfoByFieldName(
     $signatureField->getQualifiedName(),
     $vriData->getCrls(),
